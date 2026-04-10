@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCI Road Cycling — Tableau de bord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #16161e;
+    --card: #1a1a24;
+    --card2: #1f1f2e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --muted: #8888a0;
+    --accent: #e8b000;
+    --accent2: #ffcc33;
+    --blue: #4488ff;
+    --green: #22cc88;
+    --red: #ff4444;
+    --gold: #ffd700;
+    --silver: #c0c0c0;
+    --bronze: #cd7f32;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-bottom: 1px solid var(--border2);
+    padding: 0 2rem;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+  .header-inner {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; gap: 1rem;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .logo-icon {
+    width: 36px; height: 36px; background: var(--accent);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-weight: 400; display: block; }
+  .header-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .refresh-btn {
+    background: rgba(255,255,255,0.07); border: 1px solid var(--border2);
+    color: var(--muted); padding: 6px 14px; border-radius: 20px; font-size: 12px;
+    cursor: pointer; transition: all .2s; font-family: inherit;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+  /* ── NEXT RACE BANNER ── */
+  .next-race-banner {
+    background: linear-gradient(135deg, #1e1e3a 0%, #252545 100%);
+    border: 1px solid rgba(232,176,0,0.3);
+    border-radius: var(--radius);
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    position: relative; overflow: hidden;
+  }
+  .next-race-banner::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--blue), var(--accent));
+  }
+  .banner-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: .5rem;
+  }
+  .banner-grid {
+    display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center;
+  }
+  .race-name-main { font-size: 2rem; font-weight: 900; color: var(--text); line-height: 1.1; }
+  .race-meta { display: flex; gap: 1rem; margin-top: .75rem; flex-wrap: wrap; }
+  .race-meta-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .race-meta-item .icon { font-size: 14px; }
+  .countdown-box { text-align: center; min-width: 260px; }
+  .countdown-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .75rem; }
+  .countdown-grid { display: flex; gap: 8px; justify-content: center; }
+  .countdown-unit {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 10px 14px; text-align: center; min-width: 56px;
+  }
+  .countdown-num { font-size: 28px; font-weight: 900; color: var(--accent); line-height: 1; }
+  .countdown-label { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .countdown-sep { font-size: 24px; font-weight: 700; color: var(--accent); display: flex; align-items: center; padding-bottom: 10px; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: var(--card); border-radius: 10px; padding: 4px; width: fit-content; }
+  .tab-btn {
+    background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 14px; font-weight: 500; padding: 8px 20px; border-radius: 7px;
+    cursor: pointer; transition: all .2s;
+  }
+  .tab-btn.active { background: var(--card2); color: var(--text); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── RANKINGS ── */
+  .rankings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+
+  .rider-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem;
+    display: flex; align-items: center; gap: 14px;
+    transition: all .25s; cursor: default; position: relative; overflow: hidden;
+  }
+  .rider-card:hover { border-color: var(--border2); transform: translateY(-2px); background: var(--card2); }
+  .rider-card.rank-1 { border-color: rgba(255,215,0,0.4); background: linear-gradient(135deg, #1f1e0a, #1a1a24); }
+  .rider-card.rank-2 { border-color: rgba(192,192,192,0.3); }
+  .rider-card.rank-3 { border-color: rgba(205,127,50,0.3); }
+
+  .rank-badge {
+    min-width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .rank-badge.r1 { background: var(--gold); color: #000; font-size: 16px; }
+  .rank-badge.r2 { background: var(--silver); color: #000; }
+  .rank-badge.r3 { background: var(--bronze); color: #000; }
+  .rank-badge.rn { background: rgba(255,255,255,0.08); color: var(--muted); }
+
+  .rider-photo {
+    width: 52px; height: 52px; border-radius: 50%; object-fit: cover;
+    flex-shrink: 0; border: 2px solid var(--border2);
+    background: var(--bg3);
+  }
+  .rider-initials {
+    width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: #fff;
+    border: 2px solid var(--border2);
+  }
+  .rider-info { flex: 1; min-width: 0; }
+  .rider-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rider-nat { font-size: 12px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .rider-points {
+    font-size: 16px; font-weight: 700; color: var(--accent); text-align: right; flex-shrink: 0;
+  }
+  .rider-pts-label { font-size: 10px; color: var(--muted); font-weight: 400; display: block; text-align: right; }
+
+  /* progress bar */
+  .rider-card::after {
+    content: ''; position: absolute; bottom: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    width: var(--progress, 0%);
+  }
+
+  /* ── CALENDAR ── */
+  .calendar-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .calendar-section { grid-template-columns: 1fr; } }
+
+  .cal-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .cal-panel-header {
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cal-panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .cal-count { font-size: 12px; color: var(--muted); background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 10px; }
+  .cal-list { overflow-y: auto; max-height: 480px; }
+
+  .race-row {
+    padding: .9rem 1.25rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px; transition: background .15s;
+  }
+  .race-row:last-child { border-bottom: none; }
+  .race-row:hover { background: rgba(255,255,255,0.03); }
+  .race-row.next-up { background: rgba(232,176,0,0.06); border-left: 3px solid var(--accent); }
+
+  .race-date-box {
+    min-width: 44px; text-align: center; flex-shrink: 0;
+    background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);
+    padding: 6px 4px;
+  }
+  .race-date-day { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+  .race-date-mon { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .race-info { flex: 1; min-width: 0; }
+  .race-row-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .race-row-cat { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .race-flag { font-size: 20px; }
+  .race-countdown-mini { font-size: 12px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .badge-past { font-size: 10px; background: rgba(255,255,255,0.07); color: var(--muted); padding: 2px 7px; border-radius: 10px; }
+  .badge-next { font-size: 10px; background: rgba(232,176,0,0.15); color: var(--accent); padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(232,176,0,0.3); }
+
+  /* ── LOADING ── */
+  .loading-state { display: flex; align-items: center; justify-content: center; padding: 4rem; flex-direction: column; gap: 1rem; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--muted); }
+
+  /* ── SECTION HEADER ── */
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; }
+  .section-title { font-size: 1rem; font-weight: 600; }
+  .section-sub { font-size: 12px; color: var(--muted); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .page { padding: 1rem; }
+    .banner-grid { grid-template-columns: 1fr; }
+    .countdown-box { min-width: 100%; }
+    .race-name-main { font-size: 1.4rem; }
+    .rankings-grid { grid-template-columns: 1fr; }
+    .header-inner { height: 56px; }
+  }
+
+  /* ── FLAG EMOJI HELPER ── */
+  .flag-emoji { font-size: 16px; }
+
+  /* ── TOOLTIP ── */
+  .source-note { font-size: 11px; color: var(--muted); margin-top: .5rem; opacity: .6; }
+
+  /* ── SKELETON ── */
+  .skeleton { animation: shimmer 1.5s infinite; background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; border-radius: 6px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">🚴</div>
+      <div>
+        <span class="logo-text">UCI Road Cycling</span>
+        <span class="logo-sub">Hommes • WorldTour</span>
+      </div>
+    </a>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="header-status">
+        <div class="status-dot"></div>
+        <span id="last-update">Chargement…</span>
+      </div>
+      <button class="refresh-btn" onclick="refreshAll()">↺ Rafraîchir</button>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- NEXT RACE BANNER -->
+  <section class="next-race-banner" id="next-race-section">
+    <div class="banner-label">🏁 Prochaine course UCI WorldTour</div>
+    <div class="banner-grid">
+      <div id="next-race-info">
+        <div class="skeleton" style="height:2.5rem;width:60%;margin-bottom:1rem;"></div>
+        <div class="skeleton" style="height:1.5rem;width:40%;"></div>
+      </div>
+      <div class="countdown-box">
+        <div class="countdown-title">⏱ Compte à rebours</div>
+        <div class="countdown-grid" id="countdown-display">
+          <div class="countdown-unit"><div class="countdown-num" id="cd-j">--</div><div class="countdown-label">Jours</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num" id="cd-h">--</div><div class="countdown-label">Heures</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num" id="cd-m">--</div><div class="countdown-label">Min</div></div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit"><div class="countdown-num" id="cd-s">--</div><div class="countdown-label">Sec</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('rankings',this)">🏆 Classement UCI</button>
+    <button class="tab-btn" onclick="switchTab('calendar',this)">📅 Calendrier</button>
+  </div>
+
+  <!-- RANKINGS TAB -->
+  <div class="tab-content active" id="tab-rankings">
+    <div class="section-header">
+      <span class="section-title">Classement individuel UCI — Top 10</span>
+      <span class="section-sub" id="ranking-date">Hommes • Route</span>
+    </div>
+    <div id="rankings-container">
+      <div class="loading-state"><div class="spinner"></div><div class="loading-text">Chargement du classement…</div></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR TAB -->
+  <div class="tab-content" id="tab-calendar">
+    <div id="calendar-container">
+      <div class="loading-state"><div class="spinner"></div><div class="loading-text">Chargement du calendrier…</div></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = '';
+
+let nextRaceData = null;
+let countdownInterval = null;
+
+// ── COLOURS for avatar fallback ────────────────────────────────────────────
+const COLORS = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#e67e22','#1abc9c','#f39c12','#2980b9','#27ae60','#d35400'];
+
+function initials(name) {
+  return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+// ── FLAG EMOJI ─────────────────────────────────────────────────────────────
+function countryToFlag(code) {
+  if (!code || code.length < 2) return '🌍';
+  const map = { SLO:'🇸🇮', SVN:'🇸🇮', DEN:'🇩🇰', DNK:'🇩🇰', BEL:'🇧🇪', ESP:'🇪🇸', GBR:'🇬🇧', COL:'🇨🇴', FRA:'🇫🇷',
+    ITA:'🇮🇹', NED:'🇳🇱', NOR:'🇳🇴', AUS:'🇦🇺', USA:'🇺🇸', GER:'🇩🇪', DEU:'🇩🇪', SUI:'🇨🇭', CHE:'🇨🇭',
+    POR:'🇵🇹', POL:'🇵🇱', RUS:'🇷🇺', KAZ:'🇰🇿', ECU:'🇪🇨', ERY:'🇪🇷' };
+  return map[code.toUpperCase()] || (code.length===2 ? String.fromCodePoint(...[...code.toUpperCase()].map(c=>c.codePointAt(0)+127397)) : '🌍');
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── COUNTDOWN ─────────────────────────────────────────────────────────────
+function startCountdown(dateStr) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  function tick() {
+    const diff = new Date(dateStr) - new Date();
+    if (diff <= 0) {
+      ['cd-j','cd-h','cd-m','cd-s'].forEach(id => document.getElementById(id).textContent='00');
+      return;
+    }
+    const j = Math.floor(diff/86400000);
+    const h = Math.floor((diff%86400000)/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    const s = Math.floor((diff%60000)/1000);
+    document.getElementById('cd-j').textContent = String(j).padStart(2,'0');
+    document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
+    document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+function miniCountdown(dateStr) {
+  const diff = new Date(dateStr) - new Date();
+  if (diff <= 0) return null;
+  const j = Math.floor(diff/86400000);
+  const h = Math.floor((diff%86400000)/3600000);
+  if (j > 0) return `dans ${j}j ${h}h`;
+  if (h > 0) return `dans ${h}h`;
+  return 'Aujourd\'hui !';
+}
+
+// ── RENDER NEXT RACE ────────────────────────────────────────────────────────
+function renderNextRace(race) {
+  if (!race) {
+    document.getElementById('next-race-info').innerHTML = '<p style="color:var(--muted)">Aucune course à venir.</p>';
+    return;
+  }
+  nextRaceData = race;
+  const d = new Date(race.date);
+  const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric' };
+  const dateStr = d.toLocaleDateString('fr-FR', opts);
+  document.getElementById('next-race-info').innerHTML = `
+    <div class="race-name-main">${race.name}</div>
+    <div class="race-meta">
+      <div class="race-meta-item"><span class="icon">${countryToFlag(race.country)}</span>${race.country||''}</div>
+      <div class="race-meta-item"><span class="icon">📅</span>${dateStr}</div>
+      <div class="race-meta-item"><span class="icon">🏅</span>${race.category||'UCI WorldTour'}</div>
+      ${race.url ? `<a href="${race.url}" target="_blank" class="race-meta-item" style="text-decoration:none;color:var(--blue);"><span class="icon">🔗</span>Voir sur PCS</a>` : ''}
+    </div>
+  `;
+  startCountdown(race.date);
+}
+
+// ── RENDER RANKINGS ─────────────────────────────────────────────────────────
+function renderRankings(riders) {
+  if (!riders || !riders.length) {
+    document.getElementById('rankings-container').innerHTML = '<div class="loading-state"><p style="color:var(--muted)">Données non disponibles.</p></div>';
+    return;
+  }
+  const maxPts = Math.max(...riders.map(r=>r.points));
+  const html = `
+    <div class="rankings-grid">
+      ${riders.map((r,i) => {
+        const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'rn';
+        const cardClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+        const pct = maxPts > 0 ? Math.round((r.points/maxPts)*100) : 50;
+        const photoEl = r.photo
+          ? `<img class="rider-photo" src="${r.photo}" alt="${r.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+             <div class="rider-initials" style="background:${COLORS[i%COLORS.length]};display:none">${initials(r.name)}</div>`
+          : `<div class="rider-initials" style="background:${COLORS[i%COLORS.length]}">${initials(r.name)}</div>`;
+        return `
+          <div class="rider-card ${cardClass}" style="--progress:${pct}%">
+            <div class="rank-badge ${rankClass}">${i<3?['🥇','🥈','🥉'][i]:r.rank}</div>
+            ${photoEl}
+            <div class="rider-info">
+              <div class="rider-name">${r.name}</div>
+              <div class="rider-nat">${countryToFlag(r.nationality)} <span>${r.nationality||''}</span></div>
+            </div>
+            <div>
+              <div class="rider-points">${r.points.toLocaleString('fr-FR')}</div>
+              <div class="rider-pts-label">pts</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <p class="source-note" style="margin-top:1rem">Source : UCI / ProCyclingStats</p>
+  `;
+  document.getElementById('rankings-container').innerHTML = html;
+}
+
+// ── RENDER CALENDAR ──────────────────────────────────────────────────────────
+function renderCalendar(data) {
+  const { upcoming, past } = data;
+  const now = new Date();
+
+  function raceRowHTML(race, isNext) {
+    const d = new Date(race.date);
+    const day = d.getDate();
+    const mon = d.toLocaleDateString('fr-FR',{month:'short'}).replace('.','');
+    const cd = miniCountdown(race.date);
+    const isPast = d < now;
+    return `
+      <div class="race-row ${isNext?'next-up':''}">
+        <div class="race-date-box">
+          <div class="race-date-day">${day}</div>
+          <div class="race-date-mon">${mon}</div>
+        </div>
+        <div class="race-flag">${countryToFlag(race.country)}</div>
+        <div class="race-info">
+          <div class="race-row-name">${race.name}</div>
+          <div class="race-row-cat">${race.category||'UCI WorldTour'}</div>
+        </div>
+        ${isNext ? `<span class="badge-next">Prochaine</span>` :
+          cd ? `<span class="race-countdown-mini">${cd}</span>` :
+          `<span class="badge-past">Passée</span>`}
+      </div>
+    `;
+  }
+
+  const upHtml = upcoming.map((r,i) => raceRowHTML(r, i===0)).join('') || '<div style="padding:2rem;text-align:center;color:var(--muted)">Aucune course à venir</div>';
+  const pastSorted = [...past].reverse().slice(0,15);
+  const pastHtml = pastSorted.map(r => raceRowHTML(r, false)).join('') || '<div style="padding:2rem;text-align:center;color:var(--muted)">Aucune course passée</div>';
+
+  document.getElementById('calendar-container').innerHTML = `
+    <div class="calendar-section">
+      <div class="cal-panel">
+        <div class="cal-panel-header">
+          <span class="cal-panel-title">🔜 Courses à venir <span class="cal-count">${upcoming.length}</span></span>
+        </div>
+        <div class="cal-list">${upHtml}</div>
+      </div>
+      <div class="cal-panel">
+        <div class="cal-panel-header">
+          <span class="cal-panel-title">✅ Courses récentes <span class="cal-count">${pastSorted.length}</span></span>
+        </div>
+        <div class="cal-list">${pastHtml}</div>
+      </div>
+    </div>
+    <p class="source-note" style="margin-top:1rem">Source : ProCyclingStats / UCI.org</p>
+  `;
+}
+
+// ── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchNextRace() {
+  try {
+    const r = await fetch(`${API}/api/next-race`);
+    const json = await r.json();
+    if (json.success) renderNextRace(json.data);
+  } catch (e) {
+    document.getElementById('next-race-info').innerHTML = '<p style="color:var(--muted)">Impossible de charger la prochaine course.</p>';
+  }
+}
+
+async function fetchRankings() {
+  document.getElementById('rankings-container').innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">Chargement du classement…</div></div>';
+  try {
+    const r = await fetch(`${API}/api/rankings`);
+    const json = await r.json();
+    if (json.success) {
+      renderRankings(json.data);
+      document.getElementById('ranking-date').textContent = `Mis à jour : ${new Date(json.updatedAt).toLocaleString('fr-FR')}`;
+    }
+  } catch (e) {
+    document.getElementById('rankings-container').innerHTML = '<div class="loading-state"><p style="color:var(--red)">Erreur de chargement.</p></div>';
+  }
+}
+
+async function fetchCalendar() {
+  document.getElementById('calendar-container').innerHTML = '<div class="loading-state"><div class="spinner"></div><div class="loading-text">Chargement du calendrier…</div></div>';
+  try {
+    const r = await fetch(`${API}/api/calendar`);
+    const json = await r.json();
+    if (json.success) renderCalendar(json.data);
+  } catch (e) {
+    document.getElementById('calendar-container').innerHTML = '<div class="loading-state"><p style="color:var(--red)">Erreur de chargement.</p></div>';
+  }
+}
+
+function refreshAll() {
+  document.getElementById('last-update').textContent = 'Rafraîchissement…';
+  // Clear server-side cache
+  fetch(`${API}/api/cache/clear`).catch(()=>{});
+  Promise.all([fetchNextRace(), fetchRankings(), fetchCalendar()]).then(() => {
+    document.getElementById('last-update').textContent = 'Mis à jour à ' + new Date().toLocaleTimeString('fr-FR');
+  });
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+(async function init() {
+  await Promise.all([fetchNextRace(), fetchRankings(), fetchCalendar()]);
+  document.getElementById('last-update').textContent = 'Mis à jour à ' + new Date().toLocaleTimeString('fr-FR');
+  // Auto-refresh every 30 minutes
+  setInterval(() => { fetchRankings(); fetchCalendar(); fetchNextRace(); }, 30 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
